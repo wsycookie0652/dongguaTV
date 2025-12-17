@@ -1,0 +1,17 @@
+{
+    "name": "E视界",
+    "short_name": "E视界",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#141414",
+    "theme_color": "#141414",
+    "scope": "/",
+    "icons": [
+        {
+            "src": "icon.png",
+            "sizes": "1024x1024",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ]
+}
