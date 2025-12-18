@@ -308,6 +308,7 @@ node server.js
 # 基础启动 (请替换 TMDB_API_KEY)
 docker run -d -p 3000:3000 \
   -e TMDB_API_KEY="your_api_key_here" \
+  -e ACCESS_PASSWORD="your_password" \
   --name donggua-tv \
   --restart unless-stopped \
   ghcr.io/ednovas/dongguatv:latest
@@ -326,6 +327,7 @@ mkdir -p cache/images
 # 3. 完整配置启动
 docker run -d -p 3000:3000 \
   -e TMDB_API_KEY="your_api_key_here" \
+  -e ACCESS_PASSWORD="your_password" \
   -e TMDB_PROXY_URL="https://tmdb-proxy.your-name.workers.dev" \
   -v $(pwd)/db.json:/app/db.json \
   -v $(pwd)/cache.db:/app/cache.db \
@@ -372,12 +374,13 @@ docker run -d -p 3000:3000 \
         environment:
           - TMDB_API_KEY=your_api_key_here
           - TMDB_PROXY_URL=https://tmdb-proxy.your-name.workers.dev
+          - ACCESS_PASSWORD=your_secure_password
         volumes:
           - ./db.json:/app/db.json
           - ./cache.db:/app/cache.db
         restart: unless-stopped
     ```
-    ```
+    
 2.  **启动**
     ```bash
     # 同样需要先创建文件，防止挂载成目录
