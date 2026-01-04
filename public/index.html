@@ -6,7 +6,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <!-- 核心：不发送 Referrer -->
     <meta name="referrer" content="no-referrer">
-    <title>E视界</title>
+    <title>E视界 - 免费在线观看电影电视剧 | 高清影视聚合播放器</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="E视界是一个现代化的流媒体聚合播放器，免费在线观看最新电影、电视剧、综艺、动漫。支持多线路切换、智能测速、4K高清播放。">
+    <meta name="keywords" content="在线观看,免费电影,电视剧,综艺,动漫,高清视频,流媒体,影视聚合,E视界">
+    <meta name="author" content="E视界">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://ednovas.video/">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://ednovas.video/">
+    <meta property="og:title" content="E视界 - 免费在线观看电影电视剧">
+    <meta property="og:description" content="现代化流媒体聚合播放器，免费观看最新电影、电视剧、综艺、动漫。">
+    <meta property="og:image" content="https://ednovas.video/icons/icon-512.png">
+    <meta property="og:locale" content="zh_CN">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="E视界 - 免费在线观看电影电视剧">
+    <meta name="twitter:description" content="现代化流媒体聚合播放器，免费观看最新电影、电视剧、综艺、动漫。">
+    <meta name="twitter:image" content="https://ednovas.video/icons/icon-512.png">
 
     <!-- 兼容性检测 (必须在所有脚本之前) -->
     <script>
@@ -1539,10 +1560,30 @@
             aspect-ratio: 2/3;
             border-radius: 6px;
             overflow: hidden;
-            background: #222;
+            background: linear-gradient(110deg, #1a1a1a 8%, #2a2a2a 18%, #1a1a1a 33%);
+            background-size: 200% 100%;
+            animation: skeleton-shimmer 1.5s infinite ease-in-out;
             position: relative;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.4);
             border: 1px solid var(--border);
+        }
+
+        /* 骨架屏闪烁动画 */
+        @keyframes skeleton-shimmer {
+            0% {
+                background-position: 200% 0;
+            }
+
+            100% {
+                background-position: -200% 0;
+            }
+        }
+
+        /* 图片加载完成后停止动画 */
+        .poster-wrap:has(img.loaded),
+        .poster-wrap.img-loaded {
+            animation: none;
+            background: #222;
         }
 
         .poster-wrap img {
@@ -1550,13 +1591,18 @@
             height: 100%;
             object-fit: cover;
             /* 性能优化：图片加载动画 */
-            transition: opacity 0.3s ease;
-            opacity: 1;
+            transition: opacity 0.4s ease;
+            opacity: 0;
             /* 图片解码优化 */
             image-rendering: -webkit-optimize-contrast;
         }
 
-        /* 图片加载前的骨架屏效果 */
+        /* 图片加载完成 */
+        .poster-wrap img.loaded {
+            opacity: 1;
+        }
+
+        /* 兜底：加载失败或无src时隐藏 */
         .poster-wrap img[src=""],
         .poster-wrap img:not([src]) {
             opacity: 0;
@@ -2495,7 +2541,8 @@
                             <h1 class="hero-title">{{ item.title }}</h1>
                             <p class="hero-desc">{{ item.overview }}</p>
                             <div class="hero-btns" style="display: flex; gap: 15px; flex-wrap: wrap;">
-                                <button class="btn-play" @click="autoSearch(item.title)"><i class="fas fa-play"></i>
+                                <button class="btn-play" @click="autoSearch(item.title, item.originalTitle)"><i
+                                        class="fas fa-play"></i>
                                     播放</button>
                                 <button class="btn-info" @click="showMovieInfo(item.rawData)"><i
                                         class="fas fa-info-circle"></i> 更多信息</button>
@@ -2523,9 +2570,10 @@
                 <div class="section-header" style="display: flex; align-items: center;">
                     <div class="section-line" style="background: linear-gradient(135deg, #667eea, #764ba2);"></div>
                     <div class="section-title"><i class="fas fa-history"></i> 继续观看</div>
-                    <!-- 同步状态图标 (隐蔽显示) -->
-                    <span v-if="syncEnabled" style="margin-left: 8px; font-size: 12px; opacity: 0.6;"
-                        :title="syncStatus === 'syncing' ? '正在同步...' : syncStatus === 'success' ? '已同步' : syncStatus === 'error' ? '同步失败' : '云同步已启用'">
+                    <!-- 同步状态图标 (双击退出登录) -->
+                    <span v-if="syncEnabled" style="margin-left: 8px; font-size: 12px; opacity: 0.6; cursor: pointer;"
+                        :title="syncStatus === 'syncing' ? '正在同步...' : syncStatus === 'success' ? '已同步' : syncStatus === 'error' ? '同步失败' : '云同步已启用 (双击退出)'"
+                        @dblclick="confirmLogout">
                         <i v-if="syncStatus === 'syncing'" class="fas fa-sync-alt fa-spin" style="color: #60a5fa;"></i>
                         <i v-else-if="syncStatus === 'success'" class="fas fa-cloud-upload-alt"
                             style="color: #46d369;"></i>
@@ -2551,7 +2599,8 @@
                             </div>
                             <div class="poster-wrap" @click="playFromHistory(item)">
                                 <img :src="item.poster" :alt="item.name"
-                                    @error="$event.target.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27150%27 height=%27225%27%3E%3Crect fill=%27%23333%27 width=%27150%27 height=%27225%27/%3E%3C/svg%3E'"
+                                    @load="$event.target.classList.add('loaded'); $event.target.parentElement && $event.target.parentElement.classList.add('img-loaded')"
+                                    @error="$event.target.src='data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27150%27 height=%27225%27%3E%3Crect fill=%27%23333%27 width=%27150%27 height=%27225%27/%3E%3C/svg%3E'; $event.target.classList.add('loaded'); $event.target.parentElement && $event.target.parentElement.classList.add('img-loaded')"
                                     loading="lazy">
                                 <!-- 进度条 -->
                                 <div
@@ -2624,9 +2673,10 @@
                                 class="fas fa-chevron-left"></i></button>
                         <div class="hot-row" :ref="key" @scroll="onRowScroll(key)">
                             <div class="hot-card" v-for="item in rowLists[key]" :key="item.id"
-                                @click="autoSearch(item.title || item.name)">
+                                @click="autoSearch(item.title || item.name, item.original_title || item.original_name)">
                                 <div class="poster-wrap">
-                                    <img :src="getPosterUrl(item.poster_path)" loading="lazy">
+                                    <img :src="getPosterUrl(item.poster_path)" loading="lazy"
+                                        @load="$event.target.classList.add('loaded'); $event.target.parentElement.classList.add('img-loaded')">
                                     <div class="rating-badge"><i class="fas fa-star text-warning"></i> {{
                                         item.vote_average
                                         ? item.vote_average.toFixed(1) : 'N/A' }}</div>
@@ -2643,9 +2693,10 @@
                     <!-- 展开状态：分页网格布局 -->
                     <div class="grid-expanded" v-show="expandedRows[key]">
                         <div class="hot-card" v-for="item in getPagedItems(key)" :key="'grid-' + item.id"
-                            @click="autoSearch(item.title || item.name)">
+                            @click="autoSearch(item.title || item.name, item.original_title || item.original_name)">
                             <div class="poster-wrap">
-                                <img :src="getPosterUrl(item.poster_path)">
+                                <img :src="getPosterUrl(item.poster_path)"
+                                    @load="$event.target.classList.add('loaded'); $event.target.parentElement.classList.add('img-loaded')">
                                 <div class="rating-badge"><i class="fas fa-star text-warning"></i> {{ item.vote_average
                                     ? item.vote_average.toFixed(1) : 'N/A' }}</div>
                             </div>
@@ -2690,7 +2741,9 @@
                 <div class="result-card" v-for="group in groupedList" :key="group.name" @click="openDetail(group)">
                     <div class="poster-wrap">
                         <img v-if="!isFallback(group.name)" :src="finalPoster(group)" :key="finalPoster(group)"
-                            referrerpolicy="no-referrer" @error="handleImgError(group.name)" loading="lazy">
+                            referrerpolicy="no-referrer" loading="lazy"
+                            @load="$event.target.classList.add('loaded'); $event.target.parentElement && $event.target.parentElement.classList.add('img-loaded')"
+                            @error="handleImgError(group.name); $event.target.classList.add('loaded'); $event.target.parentElement && $event.target.parentElement.classList.add('img-loaded')">
                         <div v-else class="poster-fallback">
                             <i class="fas fa-film mb-2 opacity-50"></i>
                             <div style="font-size:12px; color:#999">{{ group.name }}</div>
@@ -2729,7 +2782,11 @@
         </div>
 
         <div class="footer">
-            <div style="font-size:10px; margin-top:5px; opacity:0.5;">Data provided by TMDb & Maccms APIs</div>
+            <!-- 隐藏的退出登录按钮：连续点击3次退出 -->
+            <div style="font-size:10px; margin-top:5px; opacity:0.5; cursor: default; user-select: none;"
+                @click="handleFooterClick" :title="footerClickCount >= 2 ? '再点击1次退出登录' : ''">
+                Data provided by TMDb & Maccms APIs
+            </div>
         </div>
 
         <!-- ★★★ TMDb 电影详情弹窗 ★★★ -->
@@ -2756,7 +2813,7 @@
                         <p class="info-overview">{{ infoModalData?.overview || '暂无简介' }}</p>
                         <div class="info-modal-btns">
                             <button class="btn-play"
-                                @click="showInfoModal = false; autoSearch(infoModalData?.title || infoModalData?.name)">
+                                @click="showInfoModal = false; autoSearch(infoModalData?.title || infoModalData?.name, infoModalData?.original_title || infoModalData?.original_name)">
                                 <i class="fas fa-play"></i> 立即播放
                             </button>
                         </div>
@@ -2825,12 +2882,17 @@
                             <span style="display: flex; align-items: center; gap: 4px;">
                                 <span
                                     style="background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 9px;">直连</span>
-                                用户端测速（更准确）
+                                用户端直接访问
                             </span>
                             <span style="display: flex; align-items: center; gap: 4px;">
                                 <span
-                                    style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 9px;">代理</span>
-                                服务器测速
+                                    style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 9px;">中转</span>
+                                通过代理访问
+                            </span>
+                            <span style="display: flex; align-items: center; gap: 4px;">
+                                <span
+                                    style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 9px;">服务</span>
+                                服务器端测速
                             </span>
                         </div>
 
@@ -2847,9 +2909,13 @@
                                     style="background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 9px; margin-left: 4px;">
                                     直连
                                 </span>
+                                <span v-else-if="source._testType === 'proxy'"
+                                    style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 9px; margin-left: 4px;">
+                                    中转
+                                </span>
                                 <span v-else
                                     style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 9px; margin-left: 4px;">
-                                    代理
+                                    服务
                                 </span>
                             </div>
                             <!-- 慢速线路分隔符 -->
@@ -2868,9 +2934,13 @@
                                     style="background: linear-gradient(135deg, #10b981, #059669); color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 9px; margin-left: 4px;">
                                     直连
                                 </span>
+                                <span v-else-if="source._testType === 'proxy'"
+                                    style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 9px; margin-left: 4px;">
+                                    中转
+                                </span>
                                 <span v-else
                                     style="background: linear-gradient(135deg, #6366f1, #4f46e5); color: #fff; padding: 1px 5px; border-radius: 3px; font-size: 9px; margin-left: 4px;">
-                                    代理
+                                    服务
                                 </span>
                             </div>
                         </div>
@@ -2990,11 +3060,18 @@
                 const data = await res.json();
 
                 if (data.success) {
-                    // Save auth state (use hash returned from server)
+                    // 始终保存 Token 用于同步功能
+                    localStorage.setItem(AUTH_STORAGE_KEY, data.passwordHash);
+
+                    // 如果勾选了"记住登录"，设置长期有效期
                     if (remember) {
                         const expiry = Date.now() + (365 * 24 * 60 * 60 * 1000); // 365 days
-                        // Server returns passwordHash on success
-                        localStorage.setItem(AUTH_STORAGE_KEY, data.passwordHash);
+                        localStorage.setItem(AUTH_EXPIRY_KEY, expiry.toString());
+                    } else {
+                        // 不记住登录：设置会话有效期（浏览器关闭后）- 使用 sessionStorage 标记
+                        sessionStorage.setItem('emax_session_only', 'true');
+                        // 设置短期有效期（1天），下次打开页面时会重新验证
+                        const expiry = Date.now() + (24 * 60 * 60 * 1000);
                         localStorage.setItem(AUTH_EXPIRY_KEY, expiry.toString());
                     }
 
@@ -3120,6 +3197,7 @@
                     imageMap: {}, fallbackMap: {}, heroList: [], scrollY: 0,
                     hotList: [],
                     sitesMap: {},  // 缓存站点信息（用于客户端测速）
+                    corsProxyUrl: null,  // CORS 代理 URL（用于中转无法直接访问的资源站 API）
                     playbackErrorCount: 0,  // 播放失败计数
                     isAutoRetrying: false,  // 是否正在自动重试
                     autoRetryMessage: '',  // 自动切换提示信息
@@ -3133,6 +3211,7 @@
                     syncStatus: 'idle',  // 同步状态: idle, syncing, success, error
                     syncToken: '',  // 用户同步 Token (密码哈希)
                     lastSyncTime: 0,  // 上次同步时间戳
+                    footerClickCount: 0,  // 用于隐蔽退出登录的点击计数
 
                     rowLeftButtons: {}, // 存储各分类榜单左侧按钮显示状态 { movieRow: false, ... }
 
@@ -3167,26 +3246,26 @@
                     movieList: [], tvList: [], list_cn: [], list_krjp: [],
                     list_scifi: [], list_action: [], list_comedy: [], list_horror: [],
                     categories: [
+                        // 按 rowConfigs 顺序排列（randomRow 不在分类中）
                         { name: '电影', icon: 'fa-film', action: 'scroll', value: 'movieRow', color: 'linear-gradient(135deg, #FF512F 0%, #DD2476 100%)' },
                         { name: '剧集', icon: 'fa-tv', action: 'scroll', value: 'tvRow', color: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' },
                         { name: '国产', icon: 'fa-dragon', action: 'scroll', value: 'cnRow', color: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' },
                         { name: '美剧', icon: 'fa-flag-usa', action: 'scroll', value: 'usRow', color: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)' },
                         { name: '日韩', icon: 'fa-mask', action: 'scroll', value: 'krjpRow', color: 'linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%)' },
                         { name: '动漫', icon: 'fa-ghost', action: 'scroll', value: 'animeRow', color: 'linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%)' },
-                        { name: '动作', icon: 'fa-bomb', action: 'scroll', value: 'actionRow', color: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)' },
                         { name: '科幻', icon: 'fa-rocket', action: 'scroll', value: 'scifiRow', color: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)' },
-                        { name: '喜剧', icon: 'fa-laugh-squint', action: 'scroll', value: 'comedyRow', color: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)' },
+                        { name: '动作', icon: 'fa-bomb', action: 'scroll', value: 'actionRow', color: 'linear-gradient(135deg, #30cfd0 0%, #330867 100%)' },
+                        { name: '喜剧', icon: 'fa-laugh-squint', action: 'scroll', value: 'comedyRow', color: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)' },
                         { name: '犯罪', icon: 'fa-user-secret', action: 'scroll', value: 'crimeRow', color: 'linear-gradient(135deg, #89f7fe 0%, #66a6ff 100%)' },
                         { name: '爱情', icon: 'fa-heart', action: 'scroll', value: 'romanceRow', color: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)' },
-                        { name: '悬疑', icon: 'fa-search', action: 'scroll', value: 'mysteryRow', color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
-                        { name: '历史', icon: 'fa-landmark', action: 'scroll', value: 'historyRow', color: 'linear-gradient(135deg, #accbee 0%, #e7f0fd 100%)' },
                         { name: '家庭', icon: 'fa-home', action: 'scroll', value: 'familyRow', color: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)' },
                         { name: '纪录', icon: 'fa-video', action: 'scroll', value: 'docRow', color: 'linear-gradient(135deg, #fff1eb 0%, #ace0f9 100%)' },
                         { name: '战争', icon: 'fa-fighter-jet', action: 'scroll', value: 'warRow', color: 'linear-gradient(135deg, #ff0844 0%, #ffb199 100%)' },
-                        { name: '冒险', icon: 'fa-compass', action: 'scroll', value: 'adventureRow', color: 'linear-gradient(135deg, #e9defa 0%, #fbfcdb 100%)' },
-                        { name: '综艺', icon: 'fa-microphone-alt', action: 'scroll', value: 'varietyRow', color: 'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)' },
                         { name: '恐怖', icon: 'fa-skull', action: 'scroll', value: 'horrorRow', color: 'linear-gradient(135deg, #434343 0%, #000000 100%)' },
-                        { name: '奇幻', icon: 'fa-hat-wizard', action: 'scroll', value: 'fantasyRow', color: 'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)' }
+                        { name: '悬疑', icon: 'fa-search', action: 'scroll', value: 'mysteryRow', color: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' },
+                        { name: '奇幻', icon: 'fa-hat-wizard', action: 'scroll', value: 'fantasyRow', color: 'linear-gradient(135deg, #fccb90 0%, #d57eeb 100%)' },
+                        { name: '综艺', icon: 'fa-microphone-alt', action: 'scroll', value: 'varietyRow', color: 'linear-gradient(135deg, #d299c2 0%, #fef9d7 100%)' },
+                        { name: '历史', icon: 'fa-landmark', action: 'scroll', value: 'historyRow', color: 'linear-gradient(135deg, #accbee 0%, #e7f0fd 100%)' }
                     ]
                 }
             },
@@ -3281,6 +3360,12 @@
                         const res = await fetch('/api/config');
                         const config = await res.json();
                         TMDB_API_KEY = config.tmdb_api_key;
+
+                        // 保存 CORS 代理 URL（用于资源站 API 中转）
+                        if (config.cors_proxy_url) {
+                            this.corsProxyUrl = config.cors_proxy_url;
+                            console.log('[Config] CORS 代理已配置:', config.cors_proxy_url);
+                        }
 
                         // Vercel 兼容性检测
                         if (config.enable_local_image_cache === false) {
@@ -3699,11 +3784,75 @@
                 },
 
                 // 清除观看历史
-                clearWatchHistory() {
+                async clearWatchHistory() {
                     if (confirm('确定要清除所有观看历史吗？')) {
                         this.watchHistory = [];
                         localStorage.removeItem('donggua_watch_history');
+
+                        // 清除服务器端历史
+                        if (this.syncEnabled && this.syncToken) {
+                            try {
+                                await fetch('/api/history/clear', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ token: this.syncToken })
+                                });
+                                console.log('[同步] 服务器历史已清除');
+                            } catch (e) {
+                                console.error('[同步] 清除服务器历史失败:', e);
+                            }
+                        }
                         console.log('[观看历史] 已清除');
+                    }
+                },
+
+                // 退出登录（切换账户）
+                confirmLogout() {
+                    if (confirm('确定要退出登录吗？\n退出后需要重新输入密码。\n\n⚠️ 为防止观看历史混淆，本地历史将被清除。')) {
+                        // 清除认证信息
+                        localStorage.removeItem('emax_auth_hash');
+                        localStorage.removeItem('emax_auth_expiry');
+                        sessionStorage.removeItem('emax_session_only');
+
+                        // 清除本地观看历史（防止不同用户数据交叉）
+                        localStorage.removeItem('donggua_watch_history');
+
+                        // 清除所有播放进度记录
+                        const keysToRemove = [];
+                        for (let i = 0; i < localStorage.length; i++) {
+                            const key = localStorage.key(i);
+                            if (key && key.startsWith('donggua_progress_')) {
+                                keysToRemove.push(key);
+                            }
+                        }
+                        keysToRemove.forEach(key => localStorage.removeItem(key));
+
+                        // 清除同步状态
+                        this.syncEnabled = false;
+                        this.syncToken = '';
+                        this.watchHistory = [];
+
+                        console.log('[登录] 已退出，本地数据已清除');
+
+                        // 刷新页面显示密码输入框
+                        window.location.reload();
+                    }
+                },
+
+                // 页脚隐蔽退出（连续点击3次触发）
+                handleFooterClick() {
+                    this.footerClickCount++;
+
+                    // 2秒内没有继续点击则重置计数
+                    clearTimeout(this._footerClickTimer);
+                    this._footerClickTimer = setTimeout(() => {
+                        this.footerClickCount = 0;
+                    }, 2000);
+
+                    // 点击3次触发退出确认
+                    if (this.footerClickCount >= 3) {
+                        this.footerClickCount = 0;
+                        this.confirmLogout();
                     }
                 },
 
@@ -3729,6 +3878,8 @@
                     if (index >= 0 && index < this.watchHistory.length) {
                         const removed = this.watchHistory.splice(index, 1);
                         this.saveWatchHistoryToStorage();
+                        // 立即同步到服务器
+                        this.pushHistoryToServer(true);
                         this.$nextTick(() => this.updateHistoryScrollNeeded());
                         console.log('[观看历史] 已删除:', removed[0]?.name);
                     }
@@ -3904,14 +4055,18 @@
                     }
                     console.log(`[DEBUG toggleRowExpand] viewPages[key] after=`, this.viewPages[key]);
                 },
-                // 滚动到指定区域
+                // 滚动到指定区域（使用 -section 后缀的 ref）
                 scrollToSection(refName) {
-                    let el = this.$refs[refName];
-                    if (Array.isArray(el)) el = el[0]; // v-for ref 修正
-                    if (el) {
-                        const top = el.getBoundingClientRect().top + window.scrollY - 100;
-                        window.scrollTo({ top: top, behavior: 'smooth' });
-                    }
+                    this.$nextTick(() => {
+                        const refKey = refName + '-section';
+                        const sectionRef = this.$refs[refKey];
+                        let el = Array.isArray(sectionRef) ? sectionRef[0] : sectionRef;
+                        if (el) {
+                            // 预留更多空间确保标题可见（至少 120px）
+                            const top = el.getBoundingClientRect().top + window.scrollY - 120;
+                            window.scrollTo({ top: top, behavior: 'smooth' });
+                        }
+                    });
                 },
 
                 // 获取当前查看页的数据（每页20条）
@@ -4060,29 +4215,57 @@
                     };
 
                     try {
-                        // 1. 优先使用 Cloudflare Trace (稳定、无速率限制)
-                        const res = await fetchWithTimeout('https://www.cloudflare.com/cdn-cgi/trace', 3000);
+                        // 1. 优先使用 ip.sb (国内访问稳定，无速率限制，返回标准 JSON)
+                        const res = await fetchWithTimeout('https://api.ip.sb/geoip', 3000);
                         if (res.ok) {
-                            const text = await res.text();
-                            const matches = text.match(/loc=([A-Z]+)/);
-                            if (matches && matches[1] === 'CN') isCN = true;
+                            const data = await res.json();
+                            // 检查是否是中国大陆 (country_code = CN)
+                            // ip.sb 返回: { "country_code": "CN", "country": "China", ... }
+                            if (data.country_code === 'CN') {
+                                // 排除港澳台 (根据 region 或 city 判断)
+                                const excludeRegions = ['Hong Kong', 'Macau', 'Taiwan', '香港', '澳门', '台湾'];
+                                const region = data.region || data.city || '';
+                                if (!excludeRegions.some(r => region.includes(r))) {
+                                    isCN = true;
+                                }
+                            }
                         } else {
-                            throw new Error('CF Trace Status: ' + res.status);
+                            throw new Error('ip.sb Status: ' + res.status);
                         }
                     } catch (e) {
-                        // 2. 降级到 ipapi.co (有速率限制，仅作为备选)
-                        console.log('[IP检测] CF Trace 失败，尝试 ipapi.co...', e.message || e);
+                        // 2. 备选：pv.sohu.com（搜狐，国内速度快）
+                        console.log('[IP检测] ip.sb 失败，尝试搜狐接口...', e.message || e);
                         try {
-                            const res = await fetchWithTimeout('https://ipapi.co/json/', 3000);
+                            const res = await fetchWithTimeout('https://pv.sohu.com/cityjson?ie=utf-8', 3000);
                             if (res.ok) {
-                                const data = await res.json();
-                                if (data.country_code === 'CN') isCN = true;
+                                const text = await res.text();
+                                // 响应格式: var returnCitySN = {"cip": "x.x.x.x", "cid": "...", "cname": "北京市"};
+                                const match = text.match(/cname\s*:\s*["']([^"']+)["']/);
+                                if (match) {
+                                    // 只要 cname 有值就认为是国内（搜狐接口只返回国内城市）
+                                    // 排除港澳台
+                                    const city = match[1];
+                                    const excludeRegions = ['香港', '澳门', '台湾'];
+                                    if (!excludeRegions.some(r => city.includes(r))) {
+                                        isCN = true;
+                                    }
+                                }
                             } else {
-                                console.warn('[IP检测] ipapi.co 响应异常:', res.status);
+                                console.warn('[IP检测] 搜狐接口响应异常:', res.status);
                             }
                         } catch (e2) {
-                            // 即使检测失败也不阻塞，继续执行
-                            console.warn('[IP检测] 所有接口均失败，跳过自动切换');
+                            // 3. 最终备选：Cloudflare Trace（国外用户）
+                            console.log('[IP检测] 搜狐接口失败，尝试 Cloudflare...', e2.message || e2);
+                            try {
+                                const res = await fetchWithTimeout('https://www.cloudflare.com/cdn-cgi/trace', 3000);
+                                if (res.ok) {
+                                    const text = await res.text();
+                                    const matches = text.match(/loc=([A-Z]+)/);
+                                    if (matches && matches[1] === 'CN') isCN = true;
+                                }
+                            } catch (e3) {
+                                console.warn('[IP检测] 所有接口均失败，跳过自动切换');
+                            }
                         }
                     }
 
@@ -4332,6 +4515,7 @@
                             if (data.results) {
                                 this.heroList = data.results.filter(i => i.backdrop_path).slice(0, 5).map(item => ({
                                     title: item.title || item.name,
+                                    originalTitle: item.original_title || item.original_name || '',  // 原始标题（通常是英文）
                                     overview: item.overview || '精彩内容不容错过',
                                     backdrop: `${TMDB_BACKDROP_URL}${item.backdrop_path}`,
                                     rawData: item
@@ -4366,11 +4550,12 @@
                         }).catch(() => { });
                 },
 
-                autoSearch(name) {
+                autoSearch(name, originalTitle = '') {
                     this.keyword = name;
+                    this._originalTitle = originalTitle;  // 保存原始标题用于搜索
                     this.doSearch();
                 },
-                clearSearch() { this.searched = false; this.keyword = ''; this.rawList = []; },
+                clearSearch() { this.searched = false; this.keyword = ''; this.rawList = []; this._originalTitle = ''; },
                 doSearch() {
                     if (!this.keyword) return;
 
@@ -4384,7 +4569,11 @@
                     this.rawList = [];
                     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-                    const url = `/api/search?wd=${encodeURIComponent(this.keyword)}&stream=true`;
+                    // 构建搜索 URL，包含原始标题用于智能搜索
+                    let url = `/api/search?wd=${encodeURIComponent(this.keyword)}&stream=true`;
+                    if (this._originalTitle && this._originalTitle !== this.keyword) {
+                        url += `&original=${encodeURIComponent(this._originalTitle)}`;
+                    }
                     this._evtSource = new EventSource(url);
 
                     this._evtSource.onmessage = (e) => {
@@ -4479,6 +4668,7 @@
 
                     const latencyPromises = this.currentGroup.sources.map(async (source) => {
                         source.latency = '...';
+                        source._useProxy = false;  // 默认不使用代理
                         try {
                             // 1. 先获取该线路的视频详情
                             const detailRes = await fetch(`/api/detail?site_key=${source.site_key}&id=${source.vod_id}`);
@@ -4526,34 +4716,101 @@
                             }
 
                             // 3. 用户端直接测试 m3u8 URL 的延迟
+                            let directSuccess = false;
+                            let directLatency = 0;
                             const startTime = Date.now();
-                            const controller = new AbortController();
-                            const timeoutId = setTimeout(() => controller.abort(), 5000);
+                            const SLOW_THRESHOLD = 1500; // 超过此延迟视为慢速
 
-                            // m3u8 文件通常配置了 CORS，可以直接 fetch
-                            const testRes = await fetch(videoUrl, {
-                                method: 'GET',
-                                cache: 'no-cache',
-                                signal: controller.signal
-                            });
+                            try {
+                                const controller = new AbortController();
+                                const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-                            clearTimeout(timeoutId);
+                                // m3u8 文件通常配置了 CORS，可以直接 fetch
+                                const testRes = await fetch(videoUrl, {
+                                    method: 'GET',
+                                    cache: 'no-cache',
+                                    signal: controller.signal
+                                });
 
-                            if (testRes.ok || testRes.type === 'cors') {
-                                source.latency = Date.now() - startTime;
+                                clearTimeout(timeoutId);
+
+                                if (testRes.ok || testRes.type === 'cors') {
+                                    directLatency = Date.now() - startTime;
+                                    source.latency = directLatency;
+                                    directSuccess = true;
+                                }
+                            } catch (directError) {
+                                // 直接访问失败，稍后尝试代理
+                                console.log(`[直接访问失败] ${source.site_name}: ${directError.message}`);
+                            }
+
+                            // 4. 如果直接访问失败，或者延迟太高，尝试代理
+                            const shouldTryProxy = !directSuccess || (directSuccess && directLatency > SLOW_THRESHOLD);
+
+                            if (shouldTryProxy && this.corsProxyUrl) {
+                                try {
+                                    const proxyUrl = `${this.corsProxyUrl}/?url=${encodeURIComponent(videoUrl)}`;
+                                    const proxyStartTime = Date.now();
+                                    const proxyController = new AbortController();
+                                    const proxyTimeoutId = setTimeout(() => proxyController.abort(), 6000);
+
+                                    const proxyTestRes = await fetch(proxyUrl, {
+                                        method: 'GET',
+                                        cache: 'no-cache',
+                                        signal: proxyController.signal
+                                    });
+
+                                    clearTimeout(proxyTimeoutId);
+
+                                    if (proxyTestRes.ok) {
+                                        const proxyLatency = Date.now() - proxyStartTime;
+
+                                        // 如果直连失败，使用代理
+                                        // 如果直连成功但代理更快（至少快 30%），使用代理
+                                        const useProxy = !directSuccess || (proxyLatency < directLatency * 0.7);
+
+                                        if (useProxy) {
+                                            source.latency = proxyLatency;
+                                            source._useProxy = true;  // 标记需要使用代理
+                                            source._proxyUrl = this.corsProxyUrl;
+
+                                            if (directSuccess) {
+                                                console.log(`[代理更快] ${source.site_name} (${proxyLatency}ms vs 直连 ${directLatency}ms)`);
+                                            } else {
+                                                console.log(`[代理成功] ${source.site_name} 通过代理访问 (${proxyLatency}ms)`);
+                                            }
+                                            directSuccess = true;
+                                        } else {
+                                            console.log(`[直连更优] ${source.site_name} 直连 ${directLatency}ms vs 代理 ${proxyLatency}ms`);
+                                        }
+                                    }
+                                } catch (proxyError) {
+                                    console.log(`[代理失败] ${source.site_name}: ${proxyError.message}`);
+                                }
+                            }
+
+                            // 5. 如果仍然失败，回退到服务器端测速
+                            if (!directSuccess) {
+                                try {
+                                    const checkRes = await fetch(`/api/check?key=${source.site_key}`);
+                                    const checkData = await checkRes.json();
+                                    source.latency = checkData.latency;
+                                    source._testType = 'server';
+                                } catch (e) {
+                                    source.latency = 9999;
+                                }
                             } else {
-                                source.latency = Date.now() - startTime;
+                                source._testType = source._useProxy ? 'proxy' : 'direct';
                             }
 
                             // 缓存详情数据，后续切换时可以复用
                             source._cachedDetail = detail;
-                            source._testType = 'direct';  // 用户端直接测速
 
                             // 每完成一个测速就检查是否可以提前返回
                             checkEarlyReturn();
 
                         } catch (e) {
-                            // 如果是 CORS 错误，尝试 no-cors 模式再测一次
+                            // 获取详情失败的兜底处理
                             if (e.name !== 'AbortError') {
                                 try {
                                     const detailRes = await fetch(`/api/detail?site_key=${source.site_key}&id=${source.vod_id}`);
@@ -4704,6 +4961,13 @@
                     console.log('[播放器] episodeList长度:', this.episodeList?.length);
                     console.log('[播放器] dp已存在:', !!dp);
 
+                    // 检查当前线路是否需要使用代理
+                    let finalUrl = url;
+                    if (this.currentSource && this.currentSource._useProxy && this.currentSource._proxyUrl) {
+                        finalUrl = `${this.currentSource._proxyUrl}/?url=${encodeURIComponent(url)}`;
+                        console.log('[播放器] 🌐 使用代理播放:', finalUrl.substring(0, 80) + '...');
+                    }
+
                     const setupErrorHandling = () => {
                         // 监听播放错误，自动切换到下一个可用线路
                         dp.on('error', () => {
@@ -4729,7 +4993,7 @@
                             volume: 0.8,             // 默认音量 80%
                             loop: false,             // 循环播放（可在设置中切换）
                             playbackSpeed: [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2, 3],  // 0.25间隔倍速选项
-                            video: { url: url, type: 'hls' },
+                            video: { url: finalUrl, type: 'hls' },
                             contextmenu: [
                                 { text: '🎬 E视界MAX', link: '/' },
                                 { text: '⚡ 当前速度: 1x', click: () => { } }
@@ -5300,8 +5564,8 @@
 
                         let progressRestored = false;
 
-                        dp.switchVideo({ url: url, type: 'hls' });
-                        console.log('[进度记忆-切换] switchVideo 已调用');
+                        dp.switchVideo({ url: finalUrl, type: 'hls' });
+                        console.log('[进度记忆-切换] switchVideo 已调用' + (finalUrl !== url ? ' (代理模式)' : ''));
 
                         // 恢复新视频的进度
                         const restoreHandler = () => {
