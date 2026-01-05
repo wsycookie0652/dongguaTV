@@ -203,6 +203,39 @@
             -moz-osx-font-smoothing: grayscale;
         }
 
+        /* 📱 移动端 hover 残留修复 */
+        /* 在触摸设备上禁用 DPlayer 控制按钮的 hover 效果 */
+        @media (hover: none) and (pointer: coarse) {
+
+            .dplayer-icons .dplayer-icon:hover,
+            .dplayer-icon:hover,
+            .dplayer-icon.dplayer-play-icon:hover,
+            .dplayer-icon.dplayer-volume-icon:hover,
+            .dplayer-icon.dplayer-setting-icon:hover,
+            .dplayer-icon.dplayer-full-icon:hover,
+            .dplayer-icon.dplayer-full-in-icon:hover,
+            .dplayer-setting-box .dplayer-setting-item:hover,
+            .dplayer-menu-item:hover,
+            .dplayer-bezel-icon:hover,
+            .dplayer-setting-speed-item:hover {
+                /* 重置 hover 状态的样式 */
+                transform: none !important;
+                background: inherit !important;
+                box-shadow: none !important;
+            }
+
+            .dplayer-icon:hover svg,
+            .dplayer-icons .dplayer-icon:hover svg {
+                transform: none !important;
+                filter: none !important;
+            }
+
+            .dplayer-icon:hover svg path,
+            .dplayer-icons .dplayer-icon:hover svg path {
+                fill: rgba(255, 255, 255, 0.9) !important;
+            }
+        }
+
         /* 📱 全屏播放模式：移除状态栏 padding，让视频占满全屏 */
         body.dplayer-fullscreen-active {
             padding-top: 0 !important;

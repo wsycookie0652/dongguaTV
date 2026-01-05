@@ -1,6 +1,7 @@
 package com.ednovas.donguatv;
 
 import android.content.pm.ActivityInfo;
+import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +14,8 @@ public class MainActivity extends BridgeActivity {
 
     private int statusBarHeight = 0;
     private ViewGroup webViewParent = null;
+    // 📱 Android 15 (API 35) 及以上版本强制 Edge-to-Edge，需要手动添加 padding
+    private boolean needsManualPadding = false;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -29,8 +32,14 @@ public class MainActivity extends BridgeActivity {
         flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
         decorView.setSystemUiVisibility(flags);
         
-        // 获取状态栏高度
-        statusBarHeight = getStatusBarHeight();
+        // 📱 检测是否是 Android 15+ (API 35+)
+        // Android 15+ 强制 Edge-to-Edge，需要手动处理 padding
+        needsManualPadding = Build.VERSION.SDK_INT >= 35;
+        
+        if (needsManualPadding) {
+            // 获取状态栏高度
+            statusBarHeight = getStatusBarHeight();
+        }
     }
 
     @Override
@@ -42,18 +51,21 @@ public class MainActivity extends BridgeActivity {
         if (webView != null && webView.getParent() instanceof ViewGroup) {
             webViewParent = (ViewGroup) webView.getParent();
             
-            // 设置父容器的顶部 padding
-            webViewParent.setPadding(
-                webViewParent.getPaddingLeft(),
-                statusBarHeight,
-                webViewParent.getPaddingRight(),
-                webViewParent.getPaddingBottom()
-            );
+            // 📱 只在 Android 15+ 上添加手动 padding
+            if (needsManualPadding) {
+                // 设置父容器的顶部 padding
+                webViewParent.setPadding(
+                    webViewParent.getPaddingLeft(),
+                    statusBarHeight,
+                    webViewParent.getPaddingRight(),
+                    webViewParent.getPaddingBottom()
+                );
+                
+                // 设置背景色与应用一致
+                webViewParent.setBackgroundColor(0xFF141414);
+            }
             
-            // 设置背景色与应用一致
-            webViewParent.setBackgroundColor(0xFF141414);
-            
-            // 添加 JavaScript 接口用于全屏控制
+            // 添加 JavaScript 接口用于全屏控制（所有版本都需要）
             webView.addJavascriptInterface(new FullscreenInterface(), "AndroidFullscreen");
         }
     }
@@ -75,8 +87,8 @@ public class MainActivity extends BridgeActivity {
     // 进入全屏模式
     private void enterFullscreen() {
         runOnUiThread(() -> {
-            // 移除 padding
-            if (webViewParent != null) {
+            // 📱 只在 Android 15+ 上移除手动添加的 padding
+            if (needsManualPadding && webViewParent != null) {
                 webViewParent.setPadding(0, 0, 0, 0);
             }
             
@@ -99,8 +111,8 @@ public class MainActivity extends BridgeActivity {
     // 退出全屏模式
     private void exitFullscreen() {
         runOnUiThread(() -> {
-            // 恢复 padding
-            if (webViewParent != null) {
+            // 📱 只在 Android 15+ 上恢复手动添加的 padding
+            if (needsManualPadding && webViewParent != null) {
                 webViewParent.setPadding(
                     webViewParent.getPaddingLeft(),
                     statusBarHeight,
