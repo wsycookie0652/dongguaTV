@@ -2164,56 +2164,7 @@
             padding-bottom: 20px;
         }
 
-        /* TV 模式切换按钮 (Footer) - 美化版 */
-        .tv-mode-toggle {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            padding: 10px 20px;
-            margin-bottom: 12px;
-            background: linear-gradient(135deg, rgba(229, 9, 20, 0.1) 0%, rgba(139, 0, 0, 0.15) 100%);
-            border: 1px solid rgba(229, 9, 20, 0.3);
-            border-radius: 25px;
-            color: #e50914;
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
-            user-select: none;
-            position: relative;
-            overflow: hidden;
-        }
 
-        .tv-mode-toggle::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            transition: left 0.5s ease;
-        }
-
-        .tv-mode-toggle:hover::before {
-            left: 100%;
-        }
-
-        .tv-mode-toggle:hover {
-            background: linear-gradient(135deg, rgba(229, 9, 20, 0.25) 0%, rgba(139, 0, 0, 0.3) 100%);
-            border-color: rgba(229, 9, 20, 0.6);
-            box-shadow: 0 0 20px rgba(229, 9, 20, 0.3), 0 5px 15px rgba(0, 0, 0, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .tv-mode-toggle:active {
-            transform: translateY(0);
-        }
-
-        .tv-mode-toggle i {
-            font-size: 16px;
-            filter: drop-shadow(0 0 3px rgba(229, 9, 20, 0.5));
-        }
 
         /* 电影详情弹窗 */
         .info-modal-overlay {
@@ -3106,21 +3057,18 @@
             </div>
         </div>
 
-        <!-- 关闭 TV 模式浮窗 (仅 TV 模式时显示，遥控器不可选中防止误触) -->
-        <div v-if="isTVMode" class="tv-mode-float-btn tv-active" tabindex="-1" @click="toggleTVMode" title="点击关闭TV模式">
+        <!-- TV 模式切换浮窗 (仅在 App 中显示) -->
+        <div v-if="isNativeApp" class="tv-mode-float-btn" tabindex="999" @click="toggleTVMode"
+            @keydown.enter="toggleTVMode" :class="{ 'tv-active': isTVMode }"
+            :title="isTVMode ? '当前：TV模式（点击关闭）' : '切换到TV模式'">
             <div class="tv-icon-wrapper">
-                <i class="fas fa-times"></i>
+                <i class="fas fa-tv"></i>
             </div>
-            <span class="tv-text">关闭 TV</span>
+            <span class="tv-text">{{ isTVMode ? 'TV 模式' : '切换 TV' }}</span>
             <div class="tv-glow"></div>
         </div>
 
         <div class="footer">
-            <!-- TV 模式开关 (非 TV 模式时显示，用于开启) -->
-            <div v-if="!isTVMode" class="tv-mode-toggle" @click="toggleTVMode" title="切换到TV模式（遥控器导航）">
-                <i class="fas fa-tv"></i>
-                <span>开启 TV 模式</span>
-            </div>
             <!-- 隐藏的退出登录按钮：连续点击3次退出 -->
             <div style="font-size:10px; margin-top:5px; opacity:0.5; cursor: default; user-select: none;"
                 @click="handleFooterClick" :title="footerClickCount >= 2 ? '再点击1次退出登录' : ''">
