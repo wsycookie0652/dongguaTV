@@ -42,6 +42,42 @@ console.log(`[Vercel API] TMDB_PROXY_URL: ${TMDB_PROXY_URL || '(not set)'}`);
 console.log(`[Vercel API] REMOTE_DB_URL: ${REMOTE_DB_URL ? '✓ Configured' : '(not set)'}`);
 console.log(`[Vercel API] ACCESS_PASSWORD: ${ACCESS_PASSWORDS.length} password(s)`);
 
+// ========== IP 检测 (与 server.js 保持一致) ==========
+const ipLocationCache = new Map();
+const IP_CACHE_TTL = 3600 * 1000; // 缓存1小时
+
+function getClientIP(req) {
+    return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+        req.headers['x-real-ip'] ||
+        req.headers['cf-connecting-ip'] ||
+        req.socket?.remoteAddress ||
+        '';
+}
+
+async function isChineseIP(ip) {
+    if (!ip || ip === '127.0.0.1' || ip === '::1') return false;
+    const cached = ipLocationCache.get(ip);
+    if (cached && (Date.now() - cached.time < IP_CACHE_TTL)) return cached.isCN;
+    try {
+        const response = await axios.get(`https://api.ip.sb/geoip/${ip}`, {
+            timeout: 3000,
+            headers: { 'User-Agent': 'DongguaTV/1.0' }
+        });
+        let isCN = false;
+        if (response.data.country_code === 'CN') {
+            const excludeRegions = ['Hong Kong', 'Macau', 'Taiwan', '香港', '澳门', '台湾'];
+            const region = response.data.region || response.data.city || '';
+            if (!excludeRegions.some(r => region.includes(r))) isCN = true;
+        }
+        ipLocationCache.set(ip, { isCN, time: Date.now() });
+        console.log(`[IP Detection] ${ip} -> ${isCN ? '中国大陆' : '海外'}`);
+        return isCN;
+    } catch (error) {
+        console.error(`[IP Detection Error] ${ip}:`, error.message);
+        return false;
+    }
+}
+
 // ========== API: /api/sites ==========
 app.get('/api/sites', async (req, res) => {
     try {
@@ -150,14 +186,26 @@ app.get('/api/tmdb-proxy', async (req, res) => {
     }
 
     try {
-        const TMDB_BASE = 'https://api.themoviedb.org/3';
+        // 获取用户 IP 并判断是否来自中国大陆（与 server.js 逻辑一致）
+        const clientIP = getClientIP(req);
+
+        // 只有配置了代理 URL 且用户来自中国大陆时，才使用代理
+        let useProxy = false;
+        if (TMDB_PROXY_URL) {
+            useProxy = await isChineseIP(clientIP);
+        }
+
+        const TMDB_BASE = useProxy
+            ? `${TMDB_PROXY_URL.replace(/\/$/, '')}/api/3`  // 代理需要 /api/3 前缀
+            : 'https://api.themoviedb.org/3';  // 海外用户直连官方 API
+
         const response = await axios.get(`${TMDB_BASE}${tmdbPath}`, {
             params: {
                 ...params,
                 api_key: TMDB_API_KEY,
                 language: 'zh-CN'
             },
-            timeout: 10000
+            timeout: 15000  // 增加超时时间（代理可能较慢）
         });
 
         // 缓存结果
@@ -186,29 +234,32 @@ app.get('/api/tmdb-image/:size/:filename', async (req, res) => {
         return res.status(400).send('Invalid parameters');
     }
 
-    const tmdbUrl = `https://image.tmdb.org/t/p/${size}/${filename}`;
-
     try {
-        // 支持自定义反代 URL
-        let targetUrl = tmdbUrl;
+        // 获取用户 IP 并判断是否来自中国大陆（与 TMDB API 代理逻辑一致）
+        const clientIP = getClientIP(req);
+
+        // 只有配置了代理 URL 且用户来自中国大陆时，才使用代理
+        let useProxy = false;
         if (TMDB_PROXY_URL) {
-            const proxyBase = TMDB_PROXY_URL.replace(/\/$/, '');
-            targetUrl = `${proxyBase}/t/p/${size}/${filename}`;
+            useProxy = await isChineseIP(clientIP);
         }
 
-        // console.log(`[Vercel Image] Proxying: ${targetUrl}`);
+        const targetUrl = useProxy
+            ? `${TMDB_PROXY_URL.replace(/\/$/, '')}/t/p/${size}/${filename}`  // 代理
+            : `https://image.tmdb.org/t/p/${size}/${filename}`;  // 直连官方
+
         const response = await axios({
             url: targetUrl,
             method: 'GET',
             responseType: 'stream',
-            timeout: 10000
+            timeout: 15000  // 增加超时时间
         });
 
         // 缓存控制：公共缓存，有效期1天
         res.setHeader('Cache-Control', 'public, max-age=86400, s-maxage=86400');
         response.data.pipe(res);
     } catch (error) {
-        console.error(`[Vercel Image Error] ${tmdbUrl}:`, error.message);
+        console.error(`[Vercel Image Error] ${size}/${filename}:`, error.message);
         res.status(404).send('Image not found');
     }
 });
